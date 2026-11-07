@@ -1,5 +1,7 @@
 # DupFinder
 
+![Logo](LogoImg.png)
+
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg) ![Platform](https://img.shields.io/badge/platform-linux-lightgrey.svg) ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 A desktop utility that finds duplicate files: point it at a folder, press **Find Dups**, and it lists every set of files underneath — at any depth — whose contents are byte-for-byte identical, grouped, with the groups wasting the most space first.
