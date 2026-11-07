@@ -1,0 +1,19 @@
+# Lint and import-order settings; run by ./lint.sh. Kept out of pyproject.toml,
+# which stays the plain list of runtime dependencies.
+
+line-length = 100
+target-version = "py311"
+
+# finddupes.py is a reference script kept as it was handed over (see
+# finddupes.md); it is not part of the app and is not held to its rules.
+extend-exclude = ["finddupes.py"]
+
+[lint]
+# pycodestyle errors and warnings, pyflakes, bugbear, and import sorting.
+select = ["E", "W", "F", "B", "I"]
+
+[lint.isort]
+# The tests import `helpers` (on the path via pytest.ini) alongside the
+# package, and `conftest` in a group of its own after it.
+known-first-party = ["dupfinder", "helpers"]
+known-local-folder = ["conftest"]
