@@ -6,7 +6,7 @@
 
 A desktop utility that finds duplicate files: point it at a folder, press **Find Dups**, and it lists every set of files underneath — at any depth — whose contents are byte-for-byte identical, grouped, with the groups wasting the most space first.
 
-DupFinder only reports. **Open** hands the selected file to your desktop's application for it, and the folder button opens its folder in your file manager; nothing is ever deleted or moved.
+**Open** hands the selected file to your desktop's application for it, the folder button opens its folder in your file manager, and the trash can button deletes it — one file at a time, only after you confirm, and never on its own. A group left with a single file drops out of the list.
 
 **Highlights**
 

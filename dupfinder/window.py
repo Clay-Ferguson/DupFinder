@@ -1,8 +1,9 @@
-"""The window: a folder row, the duplicate groups, and two buttons under them.
+"""The window: a folder row, the duplicate groups, and three buttons under them.
 
 The layout is Sonar's with the preview pane taken away: the results run the
 full width of the window, and the Open and folder buttons that sat under
-Sonar's preview sit under the results instead.
+Sonar's preview sit under the results instead, with a Delete (trash) button
+alone at the far right of the same row.
 
 The results are a two-level tree. Each top-level row is one group of
 identical files and says how many copies there are and how much space they
@@ -20,7 +21,7 @@ from __future__ import annotations
 import os
 import time
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QModelIndex, Qt
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtWidgets import (
     QFileDialog,
@@ -41,7 +42,7 @@ from windowchrome import apply_scrollbars, close_markdown_windows
 from . import APP_NAME
 from .config import Settings, load_settings
 from .help import show_user_guide
-from .launch import open_file, open_folder
+from .launch import delete_file, open_file, open_folder
 from .patterns import PathFilter, pattern_problems
 from .scanner import PHASE_HASH, PHASE_SAMPLE, Progress, ScanResult
 from .settings import MIN_SIZE_LABEL, show_settings
@@ -50,6 +51,7 @@ from .statusbar import ScanStatusBar
 from .style import (
     ACTION_BUTTON_PADDING,
     CONTROL_BAR_PADDING,
+    DANGER_BUTTON_BG,
     PRIMARY_BUTTON_BG,
     SECONDARY_BUTTON_BG,
     action_button,
@@ -66,6 +68,9 @@ from .worker import ScanWorker
 # below the scanned folder, so it is not a usable path on its own — everything
 # that opens a file must read this role instead. Group rows carry None.
 PATH_ROLE = Qt.ItemDataRole.UserRole
+# The size of each file in a group, on the group row: what its label is
+# rebuilt from when a Delete leaves it with fewer copies. File rows carry None.
+SIZE_ROLE = Qt.ItemDataRole.UserRole + 1
 
 # The tree's columns.
 COL_PATH, COL_SIZE, COL_MODIFIED = range(3)
@@ -89,6 +94,7 @@ STOP_LABEL = "Stop"
 
 OPEN_TIP = "Open the selected file with the Open command (Options ▸ Settings)"
 FOLDER_TIP = "Show the folder holding the selected file in the file manager"
+DELETE_TIP = "Delete the selected file permanently (asks first)"
 
 
 def printable(text: str) -> str:
@@ -204,12 +210,22 @@ class MainWindow(QMainWindow):
         )
         self.folder_button.setToolTip(FOLDER_TIP)
         self.folder_button.clicked.connect(self._open_selected_folder)
+        # Red, the one destructive control in the app. It deletes only the
+        # highlighted file, and only after a confirmation.
+        self.delete_button = icon_button(
+            QStyle.StandardPixmap.SP_TrashIcon, DANGER_BUTTON_BG, CONTROL_BAR_PADDING
+        )
+        self.delete_button.setToolTip(DELETE_TIP)
+        self.delete_button.clicked.connect(self._delete_selected)
         self._set_file_buttons(False)
 
         control_bar = QHBoxLayout()
         control_bar.addWidget(self.open_button)
         control_bar.addWidget(self.folder_button)
+        # Delete sits alone at the far right, away from Open and the folder
+        # button, so a click meant for one of those cannot land on it.
         control_bar.addStretch(1)
+        control_bar.addWidget(self.delete_button)
         layout.addLayout(control_bar)
 
         self._status = ScanStatusBar()
@@ -443,6 +459,7 @@ class MainWindow(QMainWindow):
             parent = QTreeWidgetItem([group_label(group.size, len(group.paths))])
             parent.setFont(COL_PATH, bold)
             parent.setData(COL_PATH, PATH_ROLE, None)
+            parent.setData(COL_PATH, SIZE_ROLE, group.size)
             size = format_size(group.size)
             for path in group.paths:
                 try:
@@ -475,11 +492,12 @@ class MainWindow(QMainWindow):
     def _set_file_buttons(self, enabled: bool) -> None:
         self.open_button.setEnabled(enabled)
         self.folder_button.setEnabled(enabled)
+        self.delete_button.setEnabled(enabled)
 
     def _on_selection_changed(
         self, current: QTreeWidgetItem | None, _previous: QTreeWidgetItem | None
     ) -> None:
-        """Open and the folder button act on a file row, and only on one."""
+        """Open, folder and Delete act on a file row, and only on one."""
         self._set_file_buttons(
             current is not None and current.data(COL_PATH, PATH_ROLE) is not None
         )
@@ -497,6 +515,68 @@ class MainWindow(QMainWindow):
             error = open_folder(path)
             if error:
                 self._report_problem(error)
+
+    def _delete_selected(self) -> None:
+        """Delete the highlighted file, once the user has said yes.
+
+        Only that one file. Its row then leaves the tree, and a group left
+        with a single file leaves with it — one file is not a duplicate. A
+        group that still has copies gets its label recounted.
+        """
+        item = self.results.currentItem()
+        path = item.data(COL_PATH, PATH_ROLE) if item is not None else None
+        if item is None or not path:
+            return
+        answer = QMessageBox.question(
+            self,
+            APP_NAME,
+            f"Delete this file?\n\n{printable(path)}\n\n"
+            "It is deleted permanently, not moved to the Trash.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        error = delete_file(path)
+        if error:
+            self._report_problem(printable(error))
+            return
+        self._remove_file_row(item)
+        self._status.set_status(
+            f"Deleted {printable(self._display_path(path))} · {self._remaining()}"
+        )
+
+    def _remove_file_row(self, item: QTreeWidgetItem) -> None:
+        """Take a file row out of the tree, and its group if that leaves one."""
+        # Nothing selected afterwards, rather than whichever row Qt picks: the
+        # next Delete should be aimed at a file the user chose.
+        self.results.clearSelection()
+        self.results.setCurrentIndex(QModelIndex())
+        parent = item.parent()
+        if parent is None:
+            return
+        parent.removeChild(item)
+        copies = parent.childCount()
+        if copies < 2:
+            self.results.takeTopLevelItem(self.results.indexOfTopLevelItem(parent))
+        else:
+            parent.setText(COL_PATH, group_label(parent.data(COL_PATH, SIZE_ROLE), copies))
+
+    def _remaining(self) -> str:
+        """What the tree still lists, for the status bar after a Delete."""
+        count = self.results.topLevelItemCount()
+        if not count:
+            return "no duplicates left"
+        files = reclaimable = 0
+        for i in range(count):
+            parent = self.results.topLevelItem(i)
+            copies = parent.childCount()
+            files += copies
+            reclaimable += parent.data(COL_PATH, SIZE_ROLE) * (copies - 1)
+        return (
+            f"{plural(count, 'group')} · {plural(files, 'file')} · "
+            f"{format_size(reclaimable)} reclaimable left"
+        )
 
     # -- lifecycle ---------------------------------------------------------
 

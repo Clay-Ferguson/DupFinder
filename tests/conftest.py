@@ -78,6 +78,13 @@ def conf(tmp_path_factory):
     config.CONFIG_PATH = original
 
 
+class _Dialogs(list):
+    """The (title, message) of every dialog shown, and the answer to give a
+    question."""
+
+    answer = QMessageBox.StandardButton.No
+
+
 @pytest.fixture(autouse=True)
 def dialogs(monkeypatch):
     """Catch every QMessageBox instead of showing it, and report what was said.
@@ -85,16 +92,24 @@ def dialogs(monkeypatch):
     Autouse and not optional: under QT_QPA_PLATFORM=offscreen a QMessageBox
     still blocks waiting for a click that can never come, so one raised by a
     path under test would hang the whole run rather than fail it.
+
+    A `question` is answered with `shown.answer`, No unless a test sets it to
+    Yes — so a test that forgets to answer never deletes anything.
     """
-    shown = []
+    shown = _Dialogs()
 
     def capture(_parent, title, message, *args, **kwargs):
         shown.append((title, message))
         return QMessageBox.StandardButton.Ok
 
+    def ask(_parent, title, message, *args, **kwargs):
+        shown.append((title, message))
+        return shown.answer
+
     monkeypatch.setattr(QMessageBox, "warning", staticmethod(capture))
     monkeypatch.setattr(QMessageBox, "critical", staticmethod(capture))
     monkeypatch.setattr(QMessageBox, "information", staticmethod(capture))
+    monkeypatch.setattr(QMessageBox, "question", staticmethod(ask))
     return shown
 
 

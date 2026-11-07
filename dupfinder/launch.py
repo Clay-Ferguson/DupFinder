@@ -1,4 +1,5 @@
-"""Handing a file to another program: the Open command, or the file manager.
+"""Handing a file to another program — the Open command, or the file manager —
+and the one thing DupFinder does to a file itself: `delete_file`.
 
 `open_file` is the Open button. Which program it runs is a config key
 (`open.command`, `xdg-open` by default), read at the moment of the click, so
@@ -140,3 +141,24 @@ def open_folder(path: str) -> str | None:
         f"through '{SYSTEM_OPEN_COMMAND}'."
     )
     return _start_detached([SYSTEM_OPEN_COMMAND, folder], f"'{folder}'", hint)
+
+
+def delete_file(path: str) -> str | None:
+    """Delete `path` for good. An error message, or None.
+
+    The Delete button, after the window has asked. Permanent — `os.remove`,
+    not the desktop's Trash — and only ever the one path: never a folder,
+    since a scan lists nothing else, and a path that is now a folder fails
+    here rather than being emptied. A symlink put where the file was is
+    removed itself, never what it points to.
+
+    A file that is already gone counts as deleted: what was asked for is
+    true, and the window should take its row away just the same.
+    """
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        return f"Could not delete the file:\n{path}\n\n{exc.strerror or exc}"
+    return None

@@ -8,9 +8,9 @@ import sys
 
 import pytest
 
-from dupfinder.launch import build_open_argv, open_file, open_folder
+from dupfinder.launch import build_open_argv, delete_file, open_file, open_folder
 
-from conftest import TEST_OPEN_COMMAND, write
+from conftest import TEST_OPEN_COMMAND, needs_permissions, write
 
 
 @pytest.mark.parametrize(
@@ -79,3 +79,42 @@ def test_the_non_widget_modules_never_import_qt():
         [sys.executable, "-c", code], cwd=root, capture_output=True, text=True, check=True
     )
     assert done.stdout.strip() == "[]"
+
+
+def test_delete_file_removes_only_that_file(tmp_path):
+    keep = write(tmp_path / "keep", b"same")
+    gone = write(tmp_path / "gone", b"same")
+    assert delete_file(gone) is None
+    assert not os.path.exists(gone) and os.path.exists(keep)
+
+
+def test_delete_file_on_a_file_already_gone_is_not_an_error(tmp_path):
+    assert delete_file(str(tmp_path / "never-there")) is None
+
+
+def test_delete_file_never_removes_a_folder(tmp_path):
+    folder = tmp_path / "now-a-folder"
+    write(folder / "inside", b"x")
+    error = delete_file(str(folder))
+    assert error is not None and "Could not delete" in error
+    assert (folder / "inside").exists()
+
+
+def test_delete_file_removes_a_symlink_not_its_target(tmp_path):
+    target = write(tmp_path / "target", b"x")
+    link = tmp_path / "link"
+    os.symlink(target, link)
+    assert delete_file(str(link)) is None
+    assert not os.path.lexists(link) and os.path.exists(target)
+
+
+@needs_permissions
+def test_delete_file_reports_a_read_only_folder(tmp_path):
+    path = write(tmp_path / "locked" / "f", b"x")
+    os.chmod(tmp_path / "locked", 0o555)
+    try:
+        error = delete_file(path)
+    finally:
+        os.chmod(tmp_path / "locked", 0o755)
+    assert error is not None and path in error
+    assert os.path.exists(path)

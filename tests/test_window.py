@@ -7,6 +7,7 @@ import threading
 
 import pytest
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QMessageBox
 
 from dupfinder import worker
 from dupfinder.scanner import ScanResult
@@ -81,10 +82,12 @@ def test_open_and_folder_act_only_on_file_rows(scan, dup_tree, spawned):
 
     window.results.setCurrentItem(window.results.topLevelItem(0))
     assert not window.open_button.isEnabled() and not window.folder_button.isEnabled()
+    assert not window.delete_button.isEnabled()
 
     row = first_file_row(window)
     window.results.setCurrentItem(row)
     assert window.open_button.isEnabled() and window.folder_button.isEnabled()
+    assert window.delete_button.isEnabled()
 
     window.open_button.click()
     window.folder_button.click()
@@ -103,6 +106,77 @@ def test_open_on_a_file_deleted_since_the_scan_reports_it(scan, dup_tree, dialog
     window.open_button.click()
     assert spawned == []
     assert "no longer exists" in dialogs[-1][1]
+
+
+def select(window, relative):
+    """Make the file row showing `relative` the current one; return its path."""
+    for i in range(window.results.topLevelItemCount()):
+        parent = window.results.topLevelItem(i)
+        for j in range(parent.childCount()):
+            if parent.child(j).text(0) == relative:
+                window.results.setCurrentItem(parent.child(j))
+                return parent.child(j).data(0, PATH_ROLE)
+    raise AssertionError(f"no row {relative}")
+
+
+def test_delete_asks_first_and_no_keeps_the_file(scan, dup_tree, dialogs):
+    window = scan(dup_tree)
+    path = select(window, "photos/a.jpg")
+    before = groups(window)
+    window.delete_button.click()  # dialogs answers No by default
+    assert "Delete this file?" in dialogs[-1][1] and path in dialogs[-1][1]
+    assert os.path.exists(path)
+    assert groups(window) == before
+
+
+def test_delete_removes_the_file_and_its_row(scan, dup_tree, dialogs):
+    window = scan(dup_tree)
+    dialogs.answer = QMessageBox.StandardButton.Yes
+    path = select(window, "photos/a.jpg")
+    window.delete_button.click()
+    assert not os.path.exists(path)
+    assert os.path.exists(os.path.join(dup_tree, "backup", "a-copy.jpg"))
+    assert groups(window)[0] == (
+        "2 copies · 300.0 KB each · 300.0 KB reclaimable",
+        ["backup/a-copy.jpg", "deep/x/y/a.jpg"],
+    )
+    # Nothing is left selected, so a second click cannot delete anything.
+    assert window.results.currentItem() is None
+    assert not window.delete_button.isEnabled()
+    assert window._status.message.text() == (
+        "Deleted photos/a.jpg · 2 groups · 5 files · 304.0 KB reclaimable left"
+    )
+
+
+def test_a_group_down_to_one_file_disappears(scan, dup_tree, dialogs):
+    window = scan(dup_tree)
+    dialogs.answer = QMessageBox.StandardButton.Yes
+    select(window, "photos/a.jpg")
+    window.delete_button.click()
+    select(window, "deep/x/y/a.jpg")
+    window.delete_button.click()
+    assert [label for label, _ in groups(window)] == [
+        "3 copies · 2.0 KB each · 4.0 KB reclaimable"
+    ]
+    assert os.path.exists(os.path.join(dup_tree, "backup", "a-copy.jpg"))
+    for name in ("docs/r.txt", "docs/r (1).txt"):
+        select(window, name)
+        window.delete_button.click()
+    assert window.results.topLevelItemCount() == 0
+    assert window._status.message.text() == "Deleted docs/r (1).txt · no duplicates left"
+
+
+def test_a_failed_delete_is_reported_and_the_row_stays(scan, dup_tree, dialogs, monkeypatch):
+    from dupfinder import window as window_module
+
+    window = scan(dup_tree)
+    dialogs.answer = QMessageBox.StandardButton.Yes
+    monkeypatch.setattr(window_module, "delete_file", lambda path: f"Could not delete {path}")
+    path = select(window, "photos/a.jpg")
+    before = groups(window)
+    window.delete_button.click()
+    assert dialogs[-1][1] == f"Could not delete {path}"
+    assert groups(window) == before and os.path.exists(path)
 
 
 def test_not_a_folder_is_reported(qtbot, conf, tmp_path, dialogs):

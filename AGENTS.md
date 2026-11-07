@@ -4,7 +4,7 @@
 
 DupFinder is a PyQt6 desktop app that finds files with identical contents under a folder (always recursively) and lists them in groups. 
 
-It **only reports**. There is no delete, move or trash feature, by the user's decision; Open and the folder button hand files to other programs.
+It reports, and offers one action of its own: **Delete** (the trash-can button) permanently removes the single selected file after a Yes/No confirmation, then drops its row — and its group, if one file is left. There is no move or bulk-delete feature. Open and the folder button hand files to other programs.
 
 `finddupes.py` / `finddupes.md` are a reference CLI script from another AI, kept untouched and excluded from ruff. Do not edit them or import from them.
 
@@ -26,8 +26,8 @@ Installed from the `.deb` it runs `/usr/lib/dupfinder` under `python3 -I`. See `
 - `sizes.py` — `parse_megabytes` ("0.5" → 524288 bytes; the min-size setting is in MB), `megabytes_problem`, `format_size`. Pure.
 - `scanner.py` — **the algorithm**: `find_duplicates(root, filter, min_size, progress, cancel) -> ScanResult`. Pure, no Qt; its module docstring explains the stages.
 - `worker.py` — `ScanWorker(QThread)` wrapping `find_duplicates`; signals `progressed`, `done`, `failed`; `stop()` sets the cancel event.
-- `launch.py` — `open_file()` (configured command, default `xdg-open`), `open_folder()`, `build_open_argv`, the child environment.
-- `window.py` — `MainWindow`: menus, folder row, Find Dups/Stop, the results `QTreeWidget` (group rows + file rows), the control bar, status text.
+- `launch.py` — `open_file()` (configured command, default `xdg-open`), `open_folder()`, `build_open_argv`, the child environment, and `delete_file()` (`os.remove`; a file already gone counts as deleted).
+- `window.py` — `MainWindow`: menus, folder row, Find Dups/Stop, the results `QTreeWidget` (group rows + file rows), the control bar (Open, folder, Delete), status text.
 - `settings.py` — Options ▸ Settings. Adding a setting = one `_add_*()` call + a field on `Settings` + a row in `config.KEYS` (an import-time assert catches a field with no row).
 - `statusbar.py` — `ScanStatusBar` (spinner + green busy state), Sonar's.
 - `help.py` — Options ▸ User Guide via `windowchrome.show_markdown()`.
@@ -43,6 +43,7 @@ Installed from the `.deb` it runs `/usr/lib/dupfinder` under `python3 -I`. See `
 - **Nothing in the window is touched from the worker thread.** Results and progress arrive through queued signals. `closeEvent` must stop and `wait()` a running worker — destroying a running QThread aborts the process.
 - **Sizes are binary but labelled KB/MB/GB** (1 MB = 1024 × 1024 bytes), the Windows/everyday convention, by the user's choice. Never write KiB/MiB/GiB in the UI, docs or comments.
 - **The scanner never follows symlinks** and never opens anything but regular files (a FIFO would block forever). Keep `follow_symlinks=False` on every `is_dir`/`is_file`/`stat` in the walk.
+- **Delete is one file, confirmed, every time.** It acts only on the current file row, asks first with No as the default, and clears the selection afterwards so deletions never chain. Never add a delete that skips the question or takes more than one file.
 - **A cancelled scan returns no groups.** Partial results could list files as duplicates that a full comparison would have separated.
 - **Do not style the title bar**, keep the window title just "DupFinder", and **do not restyle the rendered help documents** (both as in Sonar).
 - **`docs/` is runtime content** shipped in the `.deb`; heading renames break the guide's Contents links. `tests/test_help.py` checks every link and anchor.

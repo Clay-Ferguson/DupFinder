@@ -288,8 +288,8 @@ Description: find duplicate files under a folder
  DupFinder scans every file under a folder and lists the ones whose contents
  are identical, in groups, largest wasted space first. Files are compared by
  size, then by sampled bytes, then by a full SHA-256 hash, so most files are
- never read at all. It only reports: Open and an Open Folder button hand a
- file to your applications, and nothing is ever deleted or moved.
+ never read at all. Open and an Open Folder button hand a file to your
+ applications, and a Delete button removes the selected file after asking.
 EOF
 
 # -- build -------------------------------------------------------------------

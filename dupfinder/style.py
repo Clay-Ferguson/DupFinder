@@ -36,6 +36,10 @@ PRIMARY_BUTTON_BG = "#4a6f45"
 SECONDARY_BUTTON_BG = "#5a5a5a"
 BUTTON_FG = "#f0f2ef"
 
+# A muted brick red for the one button that destroys something (Delete), in
+# the same low-saturation family as the green so it warns without shouting.
+DANGER_BUTTON_BG = "#8a3b36"
+
 # The default padding of a button made by `action_button()`, and so the shape
 # every full-size button in the app takes unless it asks for another. Wider
 # than a stock QPushButton's on purpose — the labels want room around them.
