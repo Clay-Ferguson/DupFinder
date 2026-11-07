@@ -17,14 +17,14 @@ only sees what the stage before it could not rule out:
   3. Size.   Files can only be identical if they are the same size, so a file
              whose size no other file shares is ruled out without ever being
              opened. On a typical tree this is most of them.
-  4. Sample. Each remaining file has its first and last 64 KiB hashed. The
+  4. Sample. Each remaining file has its first and last 64 KB hashed. The
              tail matters as much as the head: photos from one camera and
              videos from one encoder share long identical headers and differ
              later, and the tail rules them out here instead of costing a full
-             read. A file of 128 KiB or less is read *whole* by this stage, so
+             read. A file of 128 KB or less is read *whole* by this stage, so
              its sample digest is already its content digest and it is done.
   5. Hash.   Whatever still matches is read in full and hashed with SHA-256,
-             in 1 MiB chunks with a cancel check between them, so Stop is
+             in 1 MB chunks with a cancel check between them, so Stop is
              answered promptly even part-way through a 50 GB disk image.
 
 Stages 4 and 5 run on `HASH_THREADS` threads: file reads and hashlib both

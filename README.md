@@ -10,7 +10,7 @@ DupFinder only reports. **Open** hands the selected file to your desktop's appli
 
 **Highlights**
 
-- Compares contents, not names: files are grouped by size, then by their first and last 64 KiB, then by a full SHA-256 — so most files are never read at all
+- Compares contents, not names: files are grouped by size, then by their first and last 64 KB, then by a full SHA-256 — so most files are never read at all
 - Hard links, symbolic links and empty files are never reported as duplicates
 - Include/exclude glob patterns (the same syntax as [Sonar](https://github.com/Clay-Ferguson/sonar)), a minimum file size, and a configurable Open command
 - Multi-threaded hashing, live progress in the status bar, and a Stop button

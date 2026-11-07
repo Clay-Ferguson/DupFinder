@@ -39,16 +39,16 @@ def test_a_scan_lists_the_groups_largest_first(scan, dup_tree):
     window = scan(dup_tree)
     assert groups(window) == [
         (
-            "3 copies · 300.0 KiB each · 600.0 KiB reclaimable",
+            "3 copies · 300.0 KB each · 600.0 KB reclaimable",
             ["backup/a-copy.jpg", "deep/x/y/a.jpg", "photos/a.jpg"],
         ),
         (
-            "3 copies · 2.0 KiB each · 4.0 KiB reclaimable",
+            "3 copies · 2.0 KB each · 4.0 KB reclaimable",
             ["docs/r (1).txt", "docs/r.txt", "node_modules/r.txt"],
         ),
     ]
     assert window._status.message.text() == (
-        f"2 groups · 6 files · 604.0 KiB reclaimable — 7 files scanned in {dup_tree}"
+        f"2 groups · 6 files · 604.0 KB reclaimable — 7 files scanned in {dup_tree}"
     )
     assert not window._status.busy
 
@@ -64,7 +64,7 @@ def test_file_rows_carry_the_absolute_path_size_and_time(scan, dup_tree):
     path = row.data(0, PATH_ROLE)
     assert path == os.path.join(dup_tree, "backup", "a-copy.jpg")
     assert row.toolTip(0) == path
-    assert row.text(1) == "300.0 KiB"
+    assert row.text(1) == "300.0 KB"
     assert row.text(2)[:2] in ("19", "20")
 
 

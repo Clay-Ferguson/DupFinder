@@ -122,8 +122,8 @@ def spawned(monkeypatch):
 def dup_tree(tmp_path):
     """A small tree with a known answer.
 
-        photos/a.jpg, backup/a-copy.jpg, deep/x/y/a.jpg   one 300 KiB group
-        docs/r.txt, docs/r (1).txt                         one 2 KiB group
+        photos/a.jpg, backup/a-copy.jpg, deep/x/y/a.jpg   one 300 KB group
+        docs/r.txt, docs/r (1).txt                         one 2 KB group
         other/unique.bin                                   same size as r.txt, different
         node_modules/r.txt                                 a copy, but skipped by default
         empty1, empty2                                     never a group

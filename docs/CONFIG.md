@@ -80,7 +80,7 @@ A pattern containing `/` must start with `*/`, because it is matched against the
 
 ## `scan.min_size_mb`
 
-The smallest file compared, in **megabytes** (1 MB is 1024 × 1024 bytes, the same unit the results list uses). Fractions are allowed: `"0.5"` is 512 KiB. Examples: `"0"`, `"0.5"`, `"10"`. Write just the number — no unit suffix. A bare number without quotes works too. `"0"` compares every file; empty files are always ignored, whatever this says.
+The smallest file compared, in **megabytes** (1 MB is 1024 × 1024 bytes, the same unit the results list uses). Fractions are allowed: `"0.5"` is 512 KB. Examples: `"0"`, `"0.5"`, `"10"`. Write just the number — no unit suffix. A bare number without quotes works too. `"0"` compares every file; empty files are always ignored, whatever this says.
 
 Older versions had `scan.min_size`, a number of bytes. It is no longer read, so a config written by one of them starts at `"0"` until you set this.
 

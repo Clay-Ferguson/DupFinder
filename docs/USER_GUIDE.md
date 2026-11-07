@@ -70,17 +70,17 @@ The settings are read once, when the scan starts. Changes saved in **Options ▸
 Each group starts with a bold row that says how many copies there are, how big each one is, and how much space would be freed by keeping just one:
 
 ```
-3 copies · 4.2 MiB each · 8.4 MiB reclaimable
-    photos/2019/IMG_0042.jpg      4.2 MiB  2019-06-01 10:12
-    backup/phone/IMG_0042.jpg     4.2 MiB  2021-03-14 18:40
-    Desktop/keep.jpg              4.2 MiB  2023-11-02 09:05
+3 copies · 4.2 MB each · 8.4 MB reclaimable
+    photos/2019/IMG_0042.jpg      4.2 MB  2019-06-01 10:12
+    backup/phone/IMG_0042.jpg     4.2 MB  2021-03-14 18:40
+    Desktop/keep.jpg              4.2 MB  2023-11-02 09:05
 ```
 
 The groups are ordered by reclaimable space, largest first, so the copies most worth cleaning up are at the top. Inside a group, the files are in path order.
 
 The **File** column shows each path relative to the scanned folder; hover over it for the full path. **Modified** is the file's last-modified time, which is usually the quickest way to tell the original from the copy. Click the arrow beside a group to fold it away once you have dealt with it.
 
-When the scan is done the status bar sums it up — for example *37 groups · 112 files · 2.4 GiB reclaimable — 45,678 files scanned in /home/you/Pictures*.
+When the scan is done the status bar sums it up — for example *37 groups · 112 files · 2.4 GB reclaimable — 45,678 files scanned in /home/you/Pictures*.
 
 ## Opening a file or its folder
 
@@ -109,7 +109,7 @@ A few kinds of file are never listed:
 Most files are never read at all.
 
 1. Files are first grouped by **size**. A file whose size no other file shares cannot have a duplicate, and is not opened.
-2. Files that do share a size have their **first and last 64 KiB** compared. This rules out nearly everything else — including photos and videos that share long identical headers but differ further in. A file of 128 KiB or less has been read completely at this point and needs nothing more.
+2. Files that do share a size have their **first and last 64 KB** compared. This rules out nearly everything else — including photos and videos that share long identical headers but differ further in. A file of 128 KB or less has been read completely at this point and needs nothing more.
 3. Only files that still match are **read in full** and compared by their SHA-256 hash.
 
 Reading runs on several threads at once. On a fast SSD a scan of a home folder usually takes seconds; on a spinning hard disk, or over a network share, the hashing stage is limited by how fast the disk can deliver the files.

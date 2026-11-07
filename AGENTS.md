@@ -41,6 +41,7 @@ Installed from the `.deb` it runs `/usr/lib/dupfinder` under `python3 -I`. See `
 - **Config loading must never raise.** Bad or missing config degrades to defaults. Saving rewrites the whole file via temp file + `os.replace`.
 - **The config is read once per scan**, in `start_scan`, and what the scan needs is handed to the worker; nothing reads it mid-scan.
 - **Nothing in the window is touched from the worker thread.** Results and progress arrive through queued signals. `closeEvent` must stop and `wait()` a running worker — destroying a running QThread aborts the process.
+- **Sizes are binary but labelled KB/MB/GB** (1 MB = 1024 × 1024 bytes), the Windows/everyday convention, by the user's choice. Never write KiB/MiB/GiB in the UI, docs or comments.
 - **The scanner never follows symlinks** and never opens anything but regular files (a FIFO would block forever). Keep `follow_symlinks=False` on every `is_dir`/`is_file`/`stat` in the walk.
 - **A cancelled scan returns no groups.** Partial results could list files as duplicates that a full comparison would have separated.
 - **Do not style the title bar**, keep the window title just "DupFinder", and **do not restyle the rendered help documents** (both as in Sonar).
@@ -49,7 +50,7 @@ Installed from the `.deb` it runs `/usr/lib/dupfinder` under `python3 -I`. See `
 
 ## The algorithm, in brief
 
-Walk (prune excluded folders, skip symlinks/non-regular/empty/too-small files) → collapse hard links by `(st_dev, st_ino)` → group by size, drop singletons → hash first+last 64 KiB (a file ≤ 128 KiB is read whole here and is finished) → full SHA-256 of what still matches. Stages 4–5 run on a 4-thread pool; progress is reported from the calling thread only, at most every 0.1 s. Groups are sorted by reclaimable bytes (`size × (copies − 1)`).
+Walk (prune excluded folders, skip symlinks/non-regular/empty/too-small files) → collapse hard links by `(st_dev, st_ino)` → group by size, drop singletons → hash first+last 64 KB (a file ≤ 128 KB is read whole here and is finished) → full SHA-256 of what still matches. Stages 4–5 run on a 4-thread pool; progress is reported from the calling thread only, at most every 0.1 s. Groups are sorted by reclaimable bytes (`size × (copies − 1)`).
 
 ## Testing
 

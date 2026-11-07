@@ -77,7 +77,7 @@ TIME_FORMAT = "%Y-%m-%d %H:%M"
 
 # The widest text the Size and Modified columns can hold, which fixes their
 # widths, and the room added around it for the item padding and a gap.
-WIDEST_SIZE = "1023.9 MiB"
+WIDEST_SIZE = "1023.9 MB"
 WIDEST_TIME = "2000-12-31 23:59"
 COLUMN_PADDING = 32
 
@@ -107,7 +107,7 @@ def plural(count: int, noun: str) -> str:
 
 
 def group_label(size: int, copies: int) -> str:
-    """A group row's text: "3 copies · 4.2 MiB each · 8.4 MiB reclaimable"."""
+    """A group row's text: "3 copies · 4.2 MB each · 8.4 MB reclaimable"."""
     return (
         f"{copies} copies · {format_size(size)} each · "
         f"{format_size(size * (copies - 1))} reclaimable"

@@ -20,13 +20,13 @@ MEGABYTE = 1 << 20
 # label says MB, and accepting "4K" as well would make "4" ambiguous to read.
 _NUMBER_RE = re.compile(r"^\s*(\d+(?:\.\d*)?|\.\d+)\s*$")
 
-_UNITS = ("B", "KiB", "MiB", "GiB", "TiB")
+_UNITS = ("B", "KB", "MB", "GB", "TB")
 
 
 def parse_megabytes(text: str) -> int | None:
     """`text`, a number of megabytes, as a number of bytes; None if it is not one.
 
-    Fractions are allowed (`0.5` is 512 KiB) and rounded down to whole bytes.
+    Fractions are allowed (`0.5` is 512 KB) and rounded down to whole bytes.
     """
     match = _NUMBER_RE.match(text)
     if not match:
@@ -45,10 +45,10 @@ def megabytes_problem(text: str) -> str | None:
 
 
 def format_size(count: int) -> str:
-    """`count` bytes for a person: `512 B`, `4.0 KiB`, `1.2 GiB`.
+    """`count` bytes for a person: `512 B`, `4.0 KB`, `1.2 GB`.
 
-    Whole bytes below a KiB, where a decimal would be noise; one decimal place
-    above it, which tells 1.0 GiB from 1.4 GiB without pretending to more
+    Whole bytes below a KB, where a decimal would be noise; one decimal place
+    above it, which tells 1.0 GB from 1.4 GB without pretending to more
     precision than anyone deciding what to delete needs.
     """
     value = float(count)

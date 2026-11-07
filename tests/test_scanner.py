@@ -83,7 +83,7 @@ def test_same_size_different_content_is_not_a_group(tmp_path):
 def test_files_differing_only_in_the_tail_are_ruled_out_without_a_full_read(
     tmp_path, full_reads
 ):
-    """Same first 64 KiB — a shared camera or container header — but a
+    """Same first 64 KB — a shared camera or container header — but a
     different end. The sample stage's tail read is what separates them."""
     head = block(1, SAMPLE_BYTES * 3)
     write(tmp_path / "a", head + block(2, 1000))
