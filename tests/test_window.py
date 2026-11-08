@@ -179,6 +179,92 @@ def test_a_failed_delete_is_reported_and_the_row_stays(scan, dup_tree, dialogs, 
     assert groups(window) == before and os.path.exists(path)
 
 
+def select_many(window, *relatives):
+    """Select the file rows showing `relatives`, as Ctrl-clicks would; their paths."""
+    window.results.clearSelection()
+    paths = []
+    for relative in relatives:
+        for i in range(window.results.topLevelItemCount()):
+            parent = window.results.topLevelItem(i)
+            for j in range(parent.childCount()):
+                if parent.child(j).text(0) == relative:
+                    parent.child(j).setSelected(True)
+                    paths.append(parent.child(j).data(0, PATH_ROLE))
+    assert len(paths) == len(relatives)
+    return paths
+
+
+def test_several_files_selected_disable_open_and_folder(scan, dup_tree):
+    window = scan(dup_tree)
+    select_many(window, "photos/a.jpg", "docs/r.txt")
+    assert window.delete_button.isEnabled()
+    assert not window.open_button.isEnabled() and not window.folder_button.isEnabled()
+    # A group row in the selection does not count as a file.
+    window.results.clearSelection()
+    window.results.topLevelItem(0).setSelected(True)
+    window.results.topLevelItem(0).child(0).setSelected(True)
+    assert window.open_button.isEnabled() and window.delete_button.isEnabled()
+
+
+def test_a_multi_delete_asks_once_and_no_keeps_every_file(scan, dup_tree, dialogs):
+    window = scan(dup_tree)
+    paths = select_many(window, "docs/r.txt", "photos/a.jpg")
+    before = groups(window)
+    window.delete_button.click()
+    assert len(dialogs) == 1
+    message = dialogs[-1][1]
+    assert message.startswith("Delete these 2 files?")
+    # Only the count, not the paths.
+    assert not any(p in message for p in paths)
+    assert all(os.path.exists(p) for p in paths)
+    assert groups(window) == before
+
+
+def test_a_multi_delete_removes_every_selected_file_in_any_group(scan, dup_tree, dialogs):
+    window = scan(dup_tree)
+    dialogs.answer = QMessageBox.StandardButton.Yes
+    # All three copies of the first group: the second delete takes the group
+    # out of the tree, and the third file must still be deleted after that.
+    paths = select_many(
+        window, "backup/a-copy.jpg", "deep/x/y/a.jpg", "photos/a.jpg", "docs/r.txt"
+    )
+    window.delete_button.click()
+    assert len(dialogs) == 1
+    assert not any(os.path.exists(p) for p in paths)
+    assert groups(window) == [
+        (
+            "2 copies · 2.0 KB each · 2.0 KB reclaimable",
+            ["docs/r (1).txt", "node_modules/r.txt"],
+        )
+    ]
+    assert window.results.selectedItems() == []
+    assert not window.delete_button.isEnabled()
+    assert window._status.message.text() == (
+        "Deleted 4 files · 1 group · 2 files · 2.0 KB reclaimable left"
+    )
+
+
+def test_a_failure_in_a_multi_delete_does_not_stop_the_rest(
+    scan, dup_tree, dialogs, monkeypatch
+):
+    from dupfinder import window as window_module
+
+    window = scan(dup_tree)
+    dialogs.answer = QMessageBox.StandardButton.Yes
+    real_delete = window_module.delete_file
+    stuck, gone = select_many(window, "photos/a.jpg", "docs/r.txt")
+    monkeypatch.setattr(
+        window_module,
+        "delete_file",
+        lambda path: f"Could not delete {path}" if path == stuck else real_delete(path),
+    )
+    window.delete_button.click()
+    assert dialogs[-1][1] == f"Could not delete {stuck}"
+    assert os.path.exists(stuck) and not os.path.exists(gone)
+    assert [len(files) for _, files in groups(window)] == [3, 2]
+    assert window._status.message.text().startswith("Deleted 1 file · ")
+
+
 def test_not_a_folder_is_reported(qtbot, conf, tmp_path, dialogs):
     window = MainWindow(str(tmp_path / "missing"))
     qtbot.addWidget(window)

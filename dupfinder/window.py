@@ -24,6 +24,7 @@ import time
 from PyQt6.QtCore import QModelIndex, Qt
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QFileDialog,
     QHBoxLayout,
     QHeaderView,
@@ -94,7 +95,7 @@ STOP_LABEL = "Stop"
 
 OPEN_TIP = "Open the selected file with the Open command (Options ▸ Settings)"
 FOLDER_TIP = "Show the folder holding the selected file in the file manager"
-DELETE_TIP = "Delete the selected file permanently (asks first)"
+DELETE_TIP = "Delete the selected files permanently"
 
 
 def printable(text: str) -> str:
@@ -194,7 +195,10 @@ class MainWindow(QMainWindow):
         for column, widest in ((COL_SIZE, WIDEST_SIZE), (COL_MODIFIED, WIDEST_TIME)):
             header.setSectionResizeMode(column, QHeaderView.ResizeMode.Fixed)
             header.resizeSection(column, metrics.horizontalAdvance(widest) + COLUMN_PADDING)
-        self.results.currentItemChanged.connect(self._on_selection_changed)
+        # Ctrl- and Shift-click select several rows, in any groups, for one
+        # Delete. Open and the folder button still need exactly one file.
+        self.results.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.results.itemSelectionChanged.connect(self._on_selection_changed)
         apply_scrollbars(self.results)
         layout.addWidget(self.results, 1)
 
@@ -211,13 +215,13 @@ class MainWindow(QMainWindow):
         self.folder_button.setToolTip(FOLDER_TIP)
         self.folder_button.clicked.connect(self._open_selected_folder)
         # Red, the one destructive control in the app. It deletes only the
-        # highlighted file, and only after a confirmation.
+        # selected files, and only after a confirmation.
         self.delete_button = icon_button(
             QStyle.StandardPixmap.SP_TrashIcon, DANGER_BUTTON_BG, CONTROL_BAR_PADDING
         )
         self.delete_button.setToolTip(DELETE_TIP)
         self.delete_button.clicked.connect(self._delete_selected)
-        self._set_file_buttons(False)
+        self._on_selection_changed()
 
         control_bar = QHBoxLayout()
         control_bar.addWidget(self.open_button)
@@ -485,22 +489,35 @@ class MainWindow(QMainWindow):
         finally:
             self.results.setUpdatesEnabled(True)
 
-    def _selected_path(self) -> str | None:
-        item = self.results.currentItem()
-        return item.data(COL_PATH, PATH_ROLE) if item is not None else None
-
-    def _set_file_buttons(self, enabled: bool) -> None:
-        self.open_button.setEnabled(enabled)
-        self.folder_button.setEnabled(enabled)
-        self.delete_button.setEnabled(enabled)
-
-    def _on_selection_changed(
-        self, current: QTreeWidgetItem | None, _previous: QTreeWidgetItem | None
-    ) -> None:
-        """Open, folder and Delete act on a file row, and only on one."""
-        self._set_file_buttons(
-            current is not None and current.data(COL_PATH, PATH_ROLE) is not None
+    def _selected_file_rows(self) -> list[QTreeWidgetItem]:
+        """The selected file rows, in tree order. Group rows are left out."""
+        rows = [
+            item
+            for item in self.results.selectedItems()
+            if item.data(COL_PATH, PATH_ROLE) is not None
+        ]
+        # selectedItems() is in the order they were picked; the tree's own
+        # order is what the confirmation should list them in. A file row's
+        # parent is always its group.
+        rows.sort(
+            key=lambda item: (
+                self.results.indexOfTopLevelItem(item.parent()),
+                item.parent().indexOfChild(item),
+            )
         )
+        return rows
+
+    def _selected_path(self) -> str | None:
+        """The one selected file, or None when there are none or several."""
+        rows = self._selected_file_rows()
+        return rows[0].data(COL_PATH, PATH_ROLE) if len(rows) == 1 else None
+
+    def _on_selection_changed(self) -> None:
+        """Open and folder act on exactly one file row; Delete on any number."""
+        files = len(self._selected_file_rows())
+        self.open_button.setEnabled(files == 1)
+        self.folder_button.setEnabled(files == 1)
+        self.delete_button.setEnabled(files >= 1)
 
     def _open_selected(self) -> None:
         path = self._selected_path()
@@ -517,34 +534,67 @@ class MainWindow(QMainWindow):
                 self._report_problem(error)
 
     def _delete_selected(self) -> None:
-        """Delete the highlighted file, once the user has said yes.
+        """Delete the selected files, once the user has said yes.
 
-        Only that one file. Its row then leaves the tree, and a group left
-        with a single file leaves with it — one file is not a duplicate. A
-        group that still has copies gets its label recounted.
+        One question for the whole selection, then `_delete_row` for each
+        file in turn — the same single-file delete every time, nothing
+        batched. A failure is reported and the rest still go ahead.
         """
-        item = self.results.currentItem()
-        path = item.data(COL_PATH, PATH_ROLE) if item is not None else None
-        if item is None or not path:
+        rows = self._selected_file_rows()
+        if not rows:
             return
+        paths = [item.data(COL_PATH, PATH_ROLE) for item in rows]
+        if len(paths) == 1:
+            question = (
+                f"Delete this file?\n\n{printable(paths[0])}\n\n"
+                "It is deleted permanently, not moved to the Trash."
+            )
+        else:
+            # Only the count: the files are the ones highlighted in the tree.
+            question = (
+                f"Delete these {len(paths):,} files?\n\n"
+                "They are deleted permanently, not moved to the Trash."
+            )
         answer = QMessageBox.question(
             self,
             APP_NAME,
-            f"Delete this file?\n\n{printable(path)}\n\n"
-            "It is deleted permanently, not moved to the Trash.",
+            question,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
+        # The group rows are held here for the length of the loop: deleting
+        # one of two selected files in a group takes the group out of the
+        # tree, and without a reference Python would free it — and the other
+        # selected row with it — before that file's turn came.
+        groups = [item.parent() for item in rows]
+        deleted = 0
+        for item, path in zip(rows, paths, strict=True):
+            if self._delete_row(item, path):
+                deleted += 1
+        del groups
+        if len(paths) > 1 and deleted:
+            self._status.set_status(
+                f"Deleted {plural(deleted, 'file')} · {self._remaining()}"
+            )
+
+    def _delete_row(self, item: QTreeWidgetItem, path: str) -> bool:
+        """Delete one file and take its row out of the tree. False if it failed.
+
+        Its row then leaves the tree, and a group left with a single file
+        leaves with it — one file is not a duplicate. A group that still has
+        copies gets its label recounted.
+        """
         error = delete_file(path)
         if error:
             self._report_problem(printable(error))
-            return
+            return False
         self._remove_file_row(item)
         self._status.set_status(
             f"Deleted {printable(self._display_path(path))} · {self._remaining()}"
         )
+        return True
 
     def _remove_file_row(self, item: QTreeWidgetItem) -> None:
         """Take a file row out of the tree, and its group if that leaves one."""
@@ -556,6 +606,10 @@ class MainWindow(QMainWindow):
         if parent is None:
             return
         parent.removeChild(item)
+        if parent.treeWidget() is None:
+            # Its group already left the tree, when an earlier file in the
+            # same Delete brought it down to one copy.
+            return
         copies = parent.childCount()
         if copies < 2:
             self.results.takeTopLevelItem(self.results.indexOfTopLevelItem(parent))

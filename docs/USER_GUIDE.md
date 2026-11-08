@@ -2,7 +2,7 @@
 
 DupFinder finds files with identical contents. You point it at a folder, press **Find Dups**, and it lists every set of files underneath that folder whose bytes are exactly the same — grouped, with the groups wasting the most space first.
 
-It never changes anything on its own. When you have decided which copies to remove, you can delete them one at a time with the **Delete** (trash can) button, after confirming each one — or use the **Open** and folder buttons to look at them first, or to deal with them in your file manager.
+It never changes anything on its own. When you have decided which copies to remove, you can delete them with the **Delete** (trash can) button — one file or several at once, always after confirming — or use the **Open** and folder buttons to look at them first, or to deal with them in your file manager.
 
 This guide covers everything the window does. For the configuration file in detail, see [CONFIG.md](CONFIG.md).
 
@@ -50,7 +50,7 @@ The folder only fills in the **Folder** row. Nothing is scanned until you press 
 - **Folder** — the folder to scan, always including every folder inside it. Type a path (`~` works) or press **…** to pick one.
 - **Find Dups** — starts the scan. While a scan runs, the button reads **Stop**.
 - **The results** — one group per set of identical files, filling the window.
-- **Open** and the **folder button** — under the results on the left, acting on the selected file. The **Delete** (trash can) button sits on its own at the right end of the same row.
+- **Open** and the **folder button** — under the results on the left, acting on the selected file. The **Delete** (trash can) button sits on its own at the right end of the same row, and acts on every selected file.
 - **The status bar** — what the scan is doing while it runs (green, with a turning spinner), and a summary once it is done.
 - **File ▸ Exit**, **Options ▸ Settings** and **Options ▸ User Guide** in the menu bar.
 
@@ -85,18 +85,22 @@ When the scan is done the status bar sums it up — for example *37 groups · 11
 
 ## Opening a file or its folder
 
-Select a file row (not a group row) and:
+Select one file row (not a group row) and:
 
 - **Open** runs the Open command on it. By default that is `xdg-open`, which opens the file in whatever application your desktop uses for that type — the image viewer for a photo, the media player for a song. You can change the command in the [Settings dialog](#the-settings-dialog).
 - **The folder button** opens the folder holding the file in your file manager, which is where you would move or rename it.
 
+Both need exactly one file selected, and are greyed out while several are.
+
 ## Deleting a file
 
-Select a file row and press the red **trash can** button at the far right of the row under the results — kept well away from Open and the folder button so it is not clicked by accident. DupFinder asks whether you are sure, showing the file's full path; only **Yes** deletes it. Only that one file is deleted — never the other copies in its group, and never more than one file per click.
+Select a file row and press the red **trash can** button at the far right of the row under the results — kept well away from Open and the folder button so it is not clicked by accident. DupFinder asks whether you are sure, showing the file's full path; only **Yes** deletes it. Only the selected file is deleted — never the other copies in its group.
+
+To delete several files at once, select them all first: **Ctrl**-click adds or removes one row, and **Shift**-click selects every row between the last one clicked and this one. The files can be in any groups. DupFinder asks once, saying how many files are selected, and **Yes** deletes each of them in turn. Group rows in the selection are ignored — selecting a group row never deletes its files. Selecting every copy in a group deletes every copy, so leave unselected the one you want to keep.
 
 The deletion is **permanent**: the file is removed, not moved to your desktop's Trash, so it cannot be restored from there.
 
-Afterwards the file's row disappears from the results, and its group's count and reclaimable space are updated. When a group is down to a single file it is no longer a duplicate, so the whole group disappears — delete one of two identical files and neither is listed any more. The status bar says what was deleted and what is left. Nothing is selected afterwards, so the next deletion is always a file you have picked yourself.
+Afterwards the file's row disappears from the results, and its group's count and reclaimable space are updated. When a group is down to a single file it is no longer a duplicate, so the whole group disappears — delete one of two identical files and neither is listed any more. If one file cannot be deleted, DupFinder says so and goes on with the rest. The status bar says what was deleted and what is left. Nothing is selected afterwards, so the next deletion is always a file you have picked yourself.
 
 ## What counts as a duplicate
 
@@ -159,7 +163,7 @@ The program the **Open** button runs. The selected file is added as the last arg
 - **N files or folders could not be read, and were left out** — DupFinder had no permission to read them, or they disappeared during the scan. The rest of the scan is unaffected.
 - **Cannot open … is not on PATH** — the Open command names a program that is not installed.
 - **Cannot open — the file no longer exists** — it was moved or deleted after the scan. Run **Find Dups** again to refresh the results.
-- **Delete this file?** — the confirmation before a deletion. **No** (the default) leaves the file alone.
+- **Delete this file?** / **Delete these N files?** — the confirmation before a deletion. **No** (the default) leaves every file alone.
 - **Could not delete the file** — usually because you do not have permission to delete it (the folder holding it is read-only to you). The file stays, and so does its row. A file that was already gone when you pressed Delete is simply removed from the list.
 
 ## Troubleshooting
