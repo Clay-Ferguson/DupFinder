@@ -63,3 +63,25 @@ def test_nothing_runs_through_a_shell(path):
             if keyword.arg == "shell" and shell_on:
                 offenders.append(call.lineno)
     assert offenders == [], f"shell use in {path.name} at lines {offenders}"
+
+
+# The static dialog calls build and run their dialog in one go, so it can
+# never be framed; `messages.py` holds the framed replacements for the boxes.
+STATIC_DIALOGS = {
+    f"QMessageBox.{name}"
+    for name in ("critical", "warning", "information", "question", "about", "aboutQt")
+} | {
+    f"QInputDialog.{name}"
+    for name in ("getText", "getMultiLineText", "getInt", "getDouble", "getItem")
+}
+
+
+@pytest.mark.parametrize("path", SOURCES, ids=lambda p: p.name)
+def test_message_boxes_go_through_messages(path):
+    """Every message box wears the app's frame: a static `QMessageBox.warning()`
+    and the like would show the system's title bar instead. It would also
+    escape the test suite's `dialogs` fixture and hang the run."""
+    if path.name == "messages.py":
+        return
+    offenders = [call.lineno for call in _calls(path) if _name(call.func) in STATIC_DIALOGS]
+    assert offenders == [], f"static dialog call in {path.name} at lines {offenders}"

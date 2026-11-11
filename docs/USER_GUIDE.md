@@ -54,6 +54,8 @@ The folder only fills in the **Folder** row. Nothing is scanned until you press 
 - **The status bar** — what the scan is doing while it runs (green, with a turning spinner), and a summary once it is done.
 - **File ▸ Exit**, **Options ▸ Settings** and **Options ▸ User Guide** in the menu bar.
 
+DupFinder draws its own navy title bar and a thin gray border round the window, in place of the desktop's, so the window stands out against a dark desktop. Drag the title bar to move the window and double-click it to maximize or restore; drag any edge or corner to resize; the buttons at its right minimize, maximize and close. Dialogs and messages wear the same title bar with a close button only. The folder picker behind **…** is your desktop's own and keeps its usual look. The desktop's window menu (for **Always on Top**, say) does not open on a right-click of the title bar; press **Alt+Space** instead.
+
 ## Finding duplicates
 
 Press **Find Dups**, or Enter in the Folder row. The status bar shows the scan's progress through its stages:

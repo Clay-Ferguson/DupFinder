@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PyQt6.QtWidgets import QMessageBox  # noqa: E402
 
-from dupfinder import config, launch  # noqa: E402
+from dupfinder import config, launch, messages  # noqa: E402
 from dupfinder.window import MainWindow  # noqa: E402
 
 # The open command a test config uses: harmless if it were ever really run.
@@ -87,11 +87,13 @@ class _Dialogs(list):
 
 @pytest.fixture(autouse=True)
 def dialogs(monkeypatch):
-    """Catch every QMessageBox instead of showing it, and report what was said.
+    """Catch every message box instead of showing it, and report what was said.
 
     Autouse and not optional: under QT_QPA_PLATFORM=offscreen a QMessageBox
     still blocks waiting for a click that can never come, so one raised by a
-    path under test would hang the whole run rather than fail it.
+    path under test would hang the whole run rather than fail it. Every box
+    goes through `dupfinder.messages` (a rule `test_rules.py` guards), so
+    that module's functions are what is replaced.
 
     A `question` is answered with `shown.answer`, No unless a test sets it to
     Yes — so a test that forgets to answer never deletes anything.
@@ -106,10 +108,10 @@ def dialogs(monkeypatch):
         shown.append((title, message))
         return shown.answer
 
-    monkeypatch.setattr(QMessageBox, "warning", staticmethod(capture))
-    monkeypatch.setattr(QMessageBox, "critical", staticmethod(capture))
-    monkeypatch.setattr(QMessageBox, "information", staticmethod(capture))
-    monkeypatch.setattr(QMessageBox, "question", staticmethod(ask))
+    monkeypatch.setattr(messages, "warning", capture)
+    monkeypatch.setattr(messages, "critical", capture)
+    monkeypatch.setattr(messages, "information", capture)
+    monkeypatch.setattr(messages, "question", ask)
     return shown
 
 

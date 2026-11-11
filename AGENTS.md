@@ -14,7 +14,7 @@ It reports, and offers one action of its own: **Delete** (the trash-can button) 
 ./start.sh [FOLDER]
 ```
 
-uv-run, `package = false`, no install step. `windowchrome` is a sibling checkout (`../windowchrome`, editable). The folder argument is optional and only prefills the Folder row; startup problems are `QMessageBox`es, since the app is launched from a desktop icon.
+uv-run, `package = false`, no install step. `windowchrome` is a sibling checkout (`../windowchrome`, editable). The folder argument is optional and only prefills the Folder row; startup problems are message boxes (through `messages.py`, like every box), since the app is launched from a desktop icon.
 
 Installed from the `.deb` it runs `/usr/lib/dupfinder` under `python3 -I`. See `packaging/build-deb.sh`.
 
@@ -27,17 +27,18 @@ Installed from the `.deb` it runs `/usr/lib/dupfinder` under `python3 -I`. See `
 - `scanner.py` — **the algorithm**: `find_duplicates(root, filter, min_size, progress, cancel) -> ScanResult`. Pure, no Qt; its module docstring explains the stages.
 - `worker.py` — `ScanWorker(QThread)` wrapping `find_duplicates`; signals `progressed`, `done`, `failed`; `stop()` sets the cancel event.
 - `launch.py` — `open_file()` (configured command, default `xdg-open`), `open_folder()`, `build_open_argv`, the child environment, and `delete_file()` (`os.remove`; a file already gone counts as deleted).
-- `window.py` — `MainWindow`: menus, folder row, Find Dups/Stop, the results `QTreeWidget` (group rows + file rows), the control bar (Open, folder, Delete), status text.
+- `window.py` — `MainWindow`: windowchrome's title bar and border (`apply_frame()`), then menus, folder row, Find Dups/Stop, the results `QTreeWidget` (group rows + file rows), the control bar (Open, folder, Delete), status text.
 - `settings.py` — Options ▸ Settings. Adding a setting = one `_add_*()` call + a field on `Settings` + a row in `config.KEYS` (an import-time assert catches a field with no row).
 - `statusbar.py` — `ScanStatusBar` (spinner + green busy state), Sonar's.
-- `help.py` — Options ▸ User Guide via `windowchrome.show_markdown()`.
-- `style.py` — shared look, Sonar's minus what only the preview used.
+- `help.py` — Options ▸ User Guide via `windowchrome.show_markdown()`, framed after it is shown.
+- `messages.py` — `critical()`, `warning()`, `information()`, `question()`: drop-in replacements for the static `QMessageBox` calls, same arguments and results, that frame the box before running it. Call them as `messages.warning(...)`, never imported by name, so the tests' `dialogs` fixture can replace them.
+- `style.py` — shared look, Sonar's minus what only the preview used, plus `SCROLLBAR_HANDLE`.
 
 ## Rules
 
 - **Every button is made by `style.action_button()`** (or `icon_button()`), never `QPushButton(...)` directly (`tests/test_rules.py` guards it).
 - **No shells.** The Open command is split with `shlex` and run as an argv list. Never `shell=True` (guarded).
-- **Only the widget modules import Qt** (`window`, `worker`, `statusbar`, `settings`, `help`, `style`). `config`, `patterns`, `sizes`, `scanner` and `launch` are plain Python; `test_the_non_widget_modules_never_import_qt` guards it, and the `.deb` smoke test imports exactly those without Qt.
+- **Only the widget modules import Qt** (`window`, `worker`, `statusbar`, `settings`, `help`, `messages`, `style`). `config`, `patterns`, `sizes`, `scanner` and `launch` are plain Python; `test_the_non_widget_modules_never_import_qt` guards it, and the `.deb` smoke test imports exactly those without Qt.
 - **Config loading must never raise.** Bad or missing config degrades to defaults. Saving rewrites the whole file via temp file + `os.replace`.
 - **The config is read once per scan**, in `start_scan`, and what the scan needs is handed to the worker; nothing reads it mid-scan.
 - **Nothing in the window is touched from the worker thread.** Results and progress arrive through queued signals. `closeEvent` must stop and `wait()` a running worker — destroying a running QThread aborts the process.
@@ -45,7 +46,9 @@ Installed from the `.deb` it runs `/usr/lib/dupfinder` under `python3 -I`. See `
 - **The scanner never follows symlinks** and never opens anything but regular files (a FIFO would block forever). Keep `follow_symlinks=False` on every `is_dir`/`is_file`/`stat` in the walk.
 - **Delete is confirmed, every time, then done one file at a time.** It acts only on the selected file rows (group rows are ignored), asks once with No as the default, then calls `_delete_row` — the single-file delete — for each in turn, reporting a failure and going on. Keep it that simple: no batching or reordering of the deletes. It clears the selection afterwards so deletions never chain. Never add a delete that skips the question. Open and the folder button are enabled only with exactly one file row selected.
 - **A cancelled scan returns no groups.** Partial results could list files as duplicates that a full comparison would have separated.
-- **Do not style the title bar**, keep the window title just "DupFinder", and **do not restyle the rendered help documents** (both as in Sonar).
+- **Every window DupFinder opens wears windowchrome's frame, and only through `apply_frame()`** (windowchrome README §13): the main window, the Settings dialog, the User Guide, and every message box. The static `QMessageBox.critical()`/`warning()`/`information()`/`question()` (and any `QInputDialog.get…()`) are never called directly — they go through `messages.py`, and a box built by hand calls `apply_frame(box)` before `exec()` (`test_message_boxes_go_through_messages` guards the static calls; `tests/test_frame.py` checks each window). A window that skips this shows the system's dark title bar beside the framed one. Use the default `FrameColors`. The frame owns a window's contents margins, so margins go on its *layout*, never on the window; and the title bar is inside the window, which is why `MainWindow` adds `frame.title_bar.height()` to the height it asks for. File pickers (`QFileDialog.getExistingDirectory`) stay the desktop's own chooser, which belongs to another process and can't be framed — never switch to `DontUseNativeDialog` for it. Don't style the title bar any other way, don't subclass `TitleBar`/`WindowFrame` or connect its buttons to window slots, and don't add anything application-wide for it.
+- **Every `apply_scrollbars()` passes `handle=SCROLLBAR_HANDLE`** (`style.py`, the GTK theme's `#777777`), to match Start Menu and the GTK apps (windowchrome README §9).
+- Keep the window title just "DupFinder", and **do not restyle the rendered help documents** (both as in Sonar).
 - **`docs/` is runtime content** shipped in the `.deb`; heading renames break the guide's Contents links. `tests/test_help.py` checks every link and anchor.
 - Do not commit to git, or offer to. Only the human developer commits. Never add a dependency without asking.
 

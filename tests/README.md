@@ -15,7 +15,7 @@ Run with `./tests/run.sh` (see `AGENTS.md`). Arguments go straight to pytest.
 ## Fixtures worth knowing (`conftest.py`)
 
 - `conf` — **use it in every test that reads settings.** Points `config.CONFIG_PATH` at a temp file (read at call time, so rebinding the attribute is enough) and returns a `save(...)` function for changing settings mid-test. The Open command defaults to `/bin/true`.
-- `dialogs` — **autouse, and load-bearing.** A `QMessageBox` still blocks for a click under `offscreen`, so one raised by code under test would hang the run. This intercepts them and returns what would have been shown, which is also how to assert a problem *was* reported.
+- `dialogs` — **autouse, and load-bearing.** A `QMessageBox` still blocks for a click under `offscreen`, so one raised by code under test would hang the run. This replaces the functions of `dupfinder/messages.py`, which every box goes through, and records what would have been shown, which is also how to assert a problem *was* reported.
 - `spawned` — records every argv `launch` would start instead of starting it, and resolves `xdg-open` even where it is not installed.
 - `dup_tree` — a small tree with a known answer (see its docstring).
 - `scan(folder)` — opens a window, starts a scan and waits until the results are on screen.

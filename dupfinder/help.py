@@ -11,10 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from PyQt6.QtWidgets import QWidget
-from windowchrome import MarkdownDialog, apply_scrollbars, show_markdown
+from windowchrome import MarkdownDialog, apply_frame, apply_scrollbars, show_markdown
 
 from . import APP_NAME
-from .style import action_button
+from .style import SCROLLBAR_HANDLE, action_button
 
 # `docs/` sits beside the package, not inside it. That is safe rather than
 # lucky: `pyproject.toml` sets `package = false` and `start.sh` runs the app
@@ -36,8 +36,11 @@ def _open(name: str, title: str, parent: QWidget | None) -> MarkdownDialog:
         # windowchrome, and a plain QPushButton would wear the desktop theme.
         button_factory=lambda text: action_button(text, uniform=True),
     )
+    # show_markdown() has already shown it, so this re-shows it framed; for
+    # a guide that was already open it hands back the frame it has.
+    apply_frame(dialog)
     # The wider scroll bars the rest of the app uses.
-    apply_scrollbars(dialog.view)
+    apply_scrollbars(dialog.view, handle=SCROLLBAR_HANDLE)
     return dialog
 
 

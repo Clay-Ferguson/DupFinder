@@ -29,7 +29,7 @@ Running from this checkout needs `uv` (see [uv's install page](https://docs.astr
 
 ### The `windowchrome` sibling project
 
-DupFinder's wide scroll bars, enlarged check boxes and help window come from **[windowchrome](https://github.com/Clay-Ferguson/windowchrome)**, a small PyQt6 library shared with Sonar and the other apps. It is **not on PyPI**: `pyproject.toml` resolves it by path, from a directory sitting *beside* this one.
+DupFinder's title bar and window frame, wide scroll bars, enlarged check boxes and help window come from **[windowchrome](https://github.com/Clay-Ferguson/windowchrome)**, a small PyQt6 library shared with Sonar and the other apps. It is **not on PyPI**: `pyproject.toml` resolves it by path, from a directory sitting *beside* this one.
 
 ```bash
 cd ..                      # the directory holding DupFinder/

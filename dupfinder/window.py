@@ -38,9 +38,9 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from windowchrome import apply_scrollbars, close_markdown_windows
+from windowchrome import apply_frame, apply_scrollbars, close_markdown_windows
 
-from . import APP_NAME
+from . import APP_NAME, messages
 from .config import Settings, load_settings
 from .help import show_user_guide
 from .launch import delete_file, open_file, open_folder
@@ -54,6 +54,7 @@ from .style import (
     CONTROL_BAR_PADDING,
     DANGER_BUTTON_BG,
     PRIMARY_BUTTON_BG,
+    SCROLLBAR_HANDLE,
     SECONDARY_BUTTON_BG,
     action_button,
     action_button_style,
@@ -125,7 +126,10 @@ class MainWindow(QMainWindow):
     def __init__(self, folder: str) -> None:
         super().__init__()
         self.setWindowTitle(APP_NAME)
-        self.resize(1100, 700)
+        # The title bar is drawn inside the window, so it is added to the
+        # height rather than taken out of the results' room.
+        frame = apply_frame(self)
+        self.resize(1100, 700 + frame.title_bar.height())
 
         # The running scan, or None. Its root is also what the rows' labels
         # are relative to, kept on `_root` so the labels stay right after the
@@ -199,7 +203,7 @@ class MainWindow(QMainWindow):
         # Delete. Open and the folder button still need exactly one file.
         self.results.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.results.itemSelectionChanged.connect(self._on_selection_changed)
-        apply_scrollbars(self.results)
+        apply_scrollbars(self.results, handle=SCROLLBAR_HANDLE)
         layout.addWidget(self.results, 1)
 
         # --- control bar -------------------------------------------------
@@ -269,7 +273,7 @@ class MainWindow(QMainWindow):
 
     def _report_problem(self, message: str) -> None:
         """Show something that actually went wrong, in a dialog."""
-        QMessageBox.warning(self, APP_NAME, message)
+        messages.warning(self, APP_NAME, message)
 
     # -- actions -----------------------------------------------------------
 
@@ -555,7 +559,7 @@ class MainWindow(QMainWindow):
                 f"Delete these {len(paths):,} files?\n\n"
                 "They are deleted permanently, not moved to the Trash."
             )
-        answer = QMessageBox.question(
+        answer = messages.question(
             self,
             APP_NAME,
             question,

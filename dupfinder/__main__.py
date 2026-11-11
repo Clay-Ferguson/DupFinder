@@ -7,9 +7,9 @@ import os
 import sys
 import traceback
 
-from PyQt6.QtWidgets import QApplication, QMessageBox
+from PyQt6.QtWidgets import QApplication
 
-from . import APP_NAME, UI_POINT_SIZE
+from . import APP_NAME, UI_POINT_SIZE, messages
 from .config import ensure_config
 from .style import tune_palette
 from .window import MainWindow
@@ -59,11 +59,11 @@ def _report_unhandled(kind, value, trace) -> None:
     if QApplication.instance() is None:
         return
     # The tail of the traceback, where the failing line is: a desktop launch
-    # has no terminal for the stderr copy above to reach. The static call
-    # rather than a hand-built box also keeps it catchable by the test
-    # suite's `dialogs` fixture, since an exec()'d box blocks offscreen.
+    # has no terminal for the stderr copy above to reach. Through `messages`,
+    # like every box, so it is framed and the test suite's `dialogs` fixture
+    # can catch it — an exec()'d box blocks offscreen.
     tail = "\n".join(text.rstrip().splitlines()[-TRACEBACK_LINES:])
-    QMessageBox.critical(
+    messages.critical(
         None,
         f"{APP_NAME} — internal error",
         f"Something went wrong inside {APP_NAME}. The window should still "
@@ -120,7 +120,7 @@ def main() -> int:
     # After show(), so the warning appears over the window it is talking about
     # rather than on its own against the desktop.
     if warning:
-        QMessageBox.warning(window, f"{APP_NAME} — folder not found", warning)
+        messages.warning(window, f"{APP_NAME} — folder not found", warning)
 
     return app.exec()
 

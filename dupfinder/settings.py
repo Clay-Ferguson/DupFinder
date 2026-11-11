@@ -27,19 +27,19 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPlainTextEdit,
     QVBoxLayout,
     QWidget,
 )
-from windowchrome import apply_checkboxes, apply_scrollbars
+from windowchrome import apply_checkboxes, apply_frame, apply_scrollbars
 
-from . import APP_NAME
+from . import APP_NAME, messages
 from .config import CONFIG_PATH, Settings, load_settings, save_settings
 from .patterns import parse_pattern_lines, pattern_lines, pattern_problems
 from .sizes import megabytes_problem
 from .style import (
     PRIMARY_BUTTON_BG,
+    SCROLLBAR_HANDLE,
     SECONDARY_BUTTON_BG,
     action_button,
     action_button_size,
@@ -87,7 +87,7 @@ class PatternEdit(QPlainTextEdit):
         # the "one per line" rule the whole field is built on unreadable.
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.setTabChangesFocus(True)  # Tab moves on rather than inserting one
-        apply_scrollbars(self)
+        apply_scrollbars(self, handle=SCROLLBAR_HANDLE)
         self.setFixedHeight(self._height_for_lines())
 
     def _height_for_lines(self) -> int:
@@ -111,6 +111,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(f"{APP_NAME} — Settings")
         self.setMinimumWidth(MIN_WIDTH)
+        apply_frame(self)
 
         settings, error = load_settings()
 
@@ -279,7 +280,7 @@ class SettingsDialog(QDialog):
         if size_error:
             problems.append(f"{MIN_SIZE_LABEL} {size_error}")
         if problems:
-            QMessageBox.warning(self, f"{APP_NAME} — Settings", "\n\n".join(problems))
+            messages.warning(self, f"{APP_NAME} — Settings", "\n\n".join(problems))
             return
         error = save_settings(
             Settings(
@@ -294,7 +295,7 @@ class SettingsDialog(QDialog):
         if error:
             # Left open rather than closed on failure: the edits are still in
             # the fields, so the user can fix the cause and press Save again.
-            QMessageBox.warning(self, f"{APP_NAME} — Settings", error)
+            messages.warning(self, f"{APP_NAME} — Settings", error)
             return
         self.accept()
 

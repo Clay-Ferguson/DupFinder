@@ -40,6 +40,11 @@ BUTTON_FG = "#f0f2ef"
 # the same low-saturation family as the green so it warns without shouting.
 DANGER_BUTTON_BG = "#8a3b36"
 
+# The scroll-bar handle color handed to every `apply_scrollbars()`: the GTK
+# theme's handle gray, so the bars match the GTK apps beside this one (and
+# Start Menu's) rather than following each pane's color.
+SCROLLBAR_HANDLE = "#777777"
+
 # The default padding of a button made by `action_button()`, and so the shape
 # every full-size button in the app takes unless it asks for another. Wider
 # than a stock QPushButton's on purpose — the labels want room around them.
