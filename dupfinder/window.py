@@ -38,7 +38,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from windowchrome import apply_frame, apply_scrollbars, close_markdown_windows
+from windowchrome import apply_frame, apply_menus, apply_scrollbars, close_markdown_windows
 
 from . import APP_NAME, messages
 from .config import Settings, load_settings
@@ -59,7 +59,6 @@ from .style import (
     action_button,
     action_button_style,
     icon_button,
-    menu_style,
     mono_font,
     results_tree_style,
     selection_button_bg,
@@ -246,7 +245,7 @@ class MainWindow(QMainWindow):
     def _build_menus(self) -> None:
         """File ▸ Exit, and Options ▸ Settings / User Guide — as in Sonar."""
         bar = self.menuBar()
-        bar.setStyleSheet(menu_style())
+        apply_menus(bar)
 
         file_menu = bar.addMenu("&File")
         exit_action = QAction("E&xit", self)
